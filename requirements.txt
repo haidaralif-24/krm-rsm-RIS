@@ -3,3 +3,4 @@ graph-tool
 numpy
 IPython
 scipy
+jupyter
