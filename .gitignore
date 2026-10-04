@@ -3,3 +3,7 @@ sim_output/sir_*.png
 .ipython/
 .mypy_cache/
 .local/
+
+# The web app lives in its own repository (haidaralif-24/rsm-website) and is
+# deployed to Vercel from there. It is deliberately not part of this repo.
+/web
