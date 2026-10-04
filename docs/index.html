@@ -48,6 +48,17 @@ h1{
 h1 .line2{display:block; color:var(--orange)}
 .rule{width:72px; height:4px; background:var(--orange); margin-top:9px}
 
+/* --- header: QR badge ----------------------------------------------------- */
+/* The badge sits in a flex row beside the title. Its plate is capped at 108px
+   so it stays within the title block's own height and the header does not grow
+   -- #panel below has almost no vertical slack at 1440x900. */
+.hdrRow{display:flex; align-items:flex-start; justify-content:space-between; gap:24px}
+#qrBadge{display:flex; align-items:center; gap:12px; flex:0 0 auto}
+#qrBadge p{margin:0; text-align:right; font-size:15px; line-height:1.25; color:var(--teal-hi)}
+#qrBadge b{display:block; font-size:17px; color:var(--white)}
+#qrPlate{display:block; flex:0 0 auto; background:#fff; padding:6px; line-height:0}
+#qrPlate img{display:block; width:96px; height:96px}
+
 main{
   flex:1 1 auto; min-height:0;
   display:grid; grid-template-columns:62fr 38fr; gap:12px;
@@ -217,8 +228,16 @@ table.res tr.best .bar i{background:var(--orange)}
 
 <div id="app" class="shell" data-page-node-id="93gw5rUQw00ZcgwZIo8vJk">
   <header data-page-node-id="6ZFkusxf85BbaFPG7KPzU1">
-    <h1 data-page-node-id="HJKa9cF4gPE1fsrZki2EHI">Siapa yang Memulai Rumor?<span class="line2" data-page-node-id="sFSolEbMpnA3rvuW4qIvpx">Betweenness vs Closeness</span></h1>
-    <div class="rule" data-page-node-id="ZcCV3I9YQWMJKdZctMBSUN"></div>
+    <div class="hdrRow">
+      <div>
+        <h1 data-page-node-id="HJKa9cF4gPE1fsrZki2EHI">Siapa yang Memulai Rumor?<span class="line2" data-page-node-id="sFSolEbMpnA3rvuW4qIvpx">Betweenness vs Closeness</span></h1>
+        <div class="rule" data-page-node-id="ZcCV3I9YQWMJKdZctMBSUN"></div>
+      </div>
+      <div id="qrBadge">
+        <p><b>Coba di ponselmu</b>Pindai kode QR ini</p>
+        <span id="qrPlate"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXIAAAFyAQAAAADAX2ykAAACuklEQVR4nO1bS46jQAy1HaRegtQHyFEqN5gjtfpIfQM4Sh9gJFiOVMgjmyqS0FJRLIahgt+CEOotLBz/HWTYgo420QGMnwatnC9h/DRo5XwJ46dBK+dLGD8NWjlfwvhneD8YUAF0zYh4gzE8uQ3x7LajPPmgDdwT8x0Lerkd3iTlujC3NYc7wb7yZIPyqafkV+FzaADcFwACjAgwvHt0qm6xboCL30keMv4/0e8CtQfumt8Vw/B8YO8/DTo63/UXhg4RQew3RN3/KM8KaI2wwFn5NTO3ciP51fSoQ43EAMzsjy5/Luic/E5T5Cbar1zwY4q/IZPeV55sUD71xPGXl6H3+gdD6K350PKT8dNgLX5Criy1UC/P4ld4OBC09j7ToIPqlxU+avVe8ArcTDH9llv/crwgA4wVd7/UdscnF340+cn4afAdrYReNWLxysFTPxyY/Zb6e8PbUAG47zfGm/Ynaw+IV2btRMee5X7y5IM2cM9sv32MuiH06lcfOBZ/X0K/EBPmqdMBOl+YGh+WP7+Afp1GWHk2Bdz+8tC/svhbsH5BfPFU9WrBOxlxPWvV7Ldw/YK4ZsmqJoc89zxYPfXUs7T8ueT5vpf8uQJuJZOWrnOY76vO1WfvKU82KJ969v4VqC6Df475s4sXi79F8wcZ+Ir9fl7VSXvgTxkndbKTBUMVJ8FHlT8XdOL+1UMknreu3NyJtvj7CvuTHEZHI05LHGK6Yd1uR3nyQRu4J+Y7tdb7Qo70Jz9U0xqT2Zt/Ln/+67ShEVsbcT82lsMKmw8Wvz85VIBqv+4bw1SwawDQtUeUn4y/Tb/u610S6LGCrpGtZ1mMFtj8t/z9jT6kUdqajDVxKIzNP5es34C5NJr7z+1TuWTxtzT9ov2/uyh9kfGToPTxDxg/DVo5X8L4adDK+RLGT6P09/MXz+P+OKbCji0AAAAASUVORK5CYII=" alt="Kode QR untuk membuka situs simulasi di ponsel" width="96" height="96"></span>
+      </div>
+    </div>
   </header>
 
   <main data-page-node-id="IMoTGHN5nVMjMzynMC0IFF">
