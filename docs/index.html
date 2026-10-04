@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="id" data-page-node-id="fZ8WKEMXEMHGxBDMMkzD0e">
+<head data-page-node-id="kzCSnYDBh3YLKgMpfPs1GH">
+<meta charset="utf-8" data-page-node-id="nbyTHRaAf8127ryD9VOSw2">
+<meta name="viewport" content="width=device-width, initial-scale=1" data-page-node-id="tcjcNpH0f05tGTn17QRuGu">
+<title>Siapa yang Memulai Rumor? — Betweenness vs Closeness</title>
+<style>
+/* ---------------------------------------------------------------------------
+   Palette sampled from the team's slide. Flat panels, thin dividers, no
+   gradients and no drop shadows.
+   --------------------------------------------------------------------------- */
+:root{
+  --bg:#0F2230;
+  --panel:#152C3B;
+  --panel-hi:#1B3546;
+  --orange:#E07B39;
+  --orange-hi:#F0904F;
+  --teal:#2F7470;
+  --teal-hi:#3E8F89;
+  --white:#FFFFFF;
+  --body:#C6D7E0;
+  --dim:#8CA8B5;
+  --border:rgba(224,123,57,.42);
+  --divider:rgba(62,143,137,.30);
+  --divider-soft:rgba(62,143,137,.18);
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%;margin:0}
+body{
+  background:var(--bg); color:var(--body);
+  font-family:var(--font); font-size:18px; line-height:1.35;
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+:focus-visible{outline:3px solid var(--orange); outline-offset:2px}
+
+/* --- shell ---------------------------------------------------------------- */
+.shell{display:flex; flex-direction:column; height:100%; min-height:0}
+
+header{flex:0 0 auto; padding:12px 20px 0}
+h1{
+  margin:0; color:var(--white); font-weight:800;
+  font-size:clamp(20px,2.1vw,30px); line-height:1.1; letter-spacing:-.015em;
+}
+h1 .line2{display:block; color:var(--orange)}
+.rule{width:72px; height:4px; background:var(--orange); margin-top:9px}
+
+main{
+  flex:1 1 auto; min-height:0;
+  display:grid; grid-template-columns:62fr 38fr; gap:12px;
+  padding:10px 20px 8px;
+}
+
+footer{
+  flex:0 0 auto; margin:0 20px; padding:7px 0 9px;
+  border-top:1px solid var(--divider);
+  font-size:13px; color:var(--dim);
+}
+
+/* --- left: network -------------------------------------------------------- */
+#stage{display:flex; flex-direction:column; min-height:0; min-width:0}
+#canvasWrap{
+  flex:1 1 auto; min-height:0; position:relative;
+  background:var(--panel); border:1px solid var(--border);
+}
+#net{display:block; width:100%; height:100%}
+#demoLabel{
+  position:absolute; top:9px; left:11px;
+  font-size:13px; color:var(--orange-hi);
+  border:1px solid var(--border); background:rgba(15,34,48,.88);
+  padding:3px 9px;
+}
+#legend{
+  flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center;
+  gap:6px 20px; list-style:none; margin:0; padding:9px 2px 0;
+  font-size:18px; color:var(--body);
+}
+#legend li{display:flex; align-items:center; gap:8px}
+.sw{width:13px; height:13px; flex:0 0 auto; display:inline-block}
+.sw.ignorant{background:rgba(62,143,137,.40)}
+.sw.spreader{background:var(--orange)}
+.sw.stifler{background:var(--teal-hi)}
+.sw.newb{background:transparent; border:1.5px solid var(--white); border-radius:50%}
+
+/* --- right: control panel ------------------------------------------------- */
+#panel{
+  display:flex; flex-direction:column; gap:10px;
+  min-height:0; min-width:0; overflow-y:auto; overflow-x:hidden;
+  scrollbar-width:thin; scrollbar-color:var(--teal) transparent;
+}
+#panel::-webkit-scrollbar{width:8px}
+#panel::-webkit-scrollbar-thumb{background:var(--teal); border-radius:4px}
+
+.card{
+  background:var(--panel); border:1px solid var(--border);
+  padding:10px 12px; display:flex; flex-direction:column; gap:8px;
+  min-height:0;
+}
+.card h2{
+  margin:0; font-size:15px; font-weight:700; color:var(--teal-hi);
+  letter-spacing:.02em;
+}
+/* min-heights are deliberately small: the chart card is the flexible one, so
+   the verdict tag can appear after a run without pushing the panel into
+   overflow at 1440x900. */
+#chartCard{flex:1 1 auto; min-height:186px}
+#chartWrap{flex:1 1 auto; min-height:84px; position:relative}
+#chart{display:block; width:100%; height:100%}
+
+#statusLine{
+  margin:0; padding-top:8px; border-top:1px solid var(--divider);
+  font-size:18px; color:var(--body); min-height:26px;
+}
+#verdict{font-size:31px; font-weight:800; letter-spacing:-.01em; line-height:1.1}
+#verdict.meledak{color:var(--orange)}
+#verdict.dini{color:var(--teal-hi)}
+
+/* --- buttons -------------------------------------------------------------- */
+.btn{
+  min-height:56px; padding:0 15px;
+  font-family:inherit; font-size:18px; font-weight:600; line-height:1.15;
+  color:var(--white); background:var(--panel-hi);
+  border:1px solid var(--divider); border-radius:2px;
+  cursor:pointer; text-align:left;
+  display:flex; align-items:center;
+  transition:background-color .12s linear, border-color .12s linear;
+}
+.btn:hover{background:#22404F; border-color:var(--border)}
+.btn:active{background:#2A4B5C}
+.btn[aria-pressed="true"]{border-color:var(--orange); background:#2A4B5C; color:var(--orange-hi)}
+.btn.primary{background:var(--orange); color:#12212C; border-color:var(--orange); font-weight:800}
+.btn.primary:hover{background:var(--orange-hi); border-color:var(--orange-hi)}
+.btn.primary:active{background:#C96A2C}
+#stratList{display:flex; flex-direction:column; gap:8px}
+.btnRow{display:grid; grid-template-columns:1fr auto; gap:8px}
+.btnRow .btn{justify-content:center}
+.btn.big{min-height:84px; font-size:22px; font-weight:700; justify-content:center; text-align:center}
+
+/* --- progress ------------------------------------------------------------- */
+#progressText{margin:6px 0 0; font-size:14px; color:var(--dim)}
+.bar{display:block; width:100%; height:6px; background:rgba(62,143,137,.22); margin-top:5px}
+.bar i{display:block; height:100%; width:0; background:var(--teal-hi)}
+#progress .bar{height:8px; margin-top:0}
+#progress .bar i{background:var(--orange)}
+
+/* --- results table -------------------------------------------------------- */
+.empty{margin:0; font-size:15px; color:var(--dim)}
+table.res{width:100%; border-collapse:collapse}
+table.res th{
+  font-size:12.5px; font-weight:600; color:var(--dim); text-align:left;
+  padding:0 8px 6px 0; line-height:1.15; vertical-align:bottom;
+  border-bottom:1px solid var(--divider);
+}
+table.res td{padding:6px 8px 6px 0; border-bottom:1px solid var(--divider-soft); vertical-align:middle}
+table.res td.strat{font-size:16px; font-weight:600; color:var(--white); line-height:1.2}
+table.res .num{
+  font-size:22px; font-weight:800; color:var(--white);
+  font-variant-numeric:tabular-nums; letter-spacing:-.02em; white-space:nowrap;
+}
+table.res td.esc .num{font-size:25px}
+table.res tr.best td{background:rgba(224,123,57,.13)}
+table.res tr.best td:first-child{border-left:3px solid var(--orange); padding-left:9px}
+table.res tr.best td.strat{color:var(--orange-hi)}
+table.res tr.best .num{color:var(--orange)}
+table.res tr.best .bar i{background:var(--orange)}
+
+/* --- guess overlay -------------------------------------------------------- */
+#guessOverlay{
+  position:fixed; inset:0; z-index:50; padding:24px;
+  background:rgba(9,20,29,.87);
+  display:flex; align-items:center; justify-content:center;
+}
+.overlayBox{
+  background:var(--panel); border:1px solid var(--border);
+  padding:26px 30px 24px; width:100%; max-width:800px;
+}
+.overlayBox h2{
+  margin:0 0 18px; font-size:28px; font-weight:800; color:var(--white);
+  line-height:1.2; letter-spacing:-.01em;
+}
+.guessBtns{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+#guessVerdict{margin:0 0 10px; font-size:30px; font-weight:800; color:var(--orange); line-height:1.15}
+#guessDetail{margin:0 0 20px; font-size:18px; color:var(--body)}
+#guessProg{margin:0; font-size:18px; color:var(--body)}
+
+/* --- missing data --------------------------------------------------------- */
+#noData{
+  height:100%; display:flex; align-items:center; justify-content:center; padding:40px;
+}
+#noData .box{
+  max-width:760px; border:1px solid var(--border); background:var(--panel);
+  padding:32px 36px;
+}
+#noData h1{font-size:30px; margin:0 0 6px}
+#noData .rule{margin-bottom:16px}
+#noData p{margin:0; font-size:20px; line-height:1.5}
+#noData code{font-family:var(--mono); font-size:18px; color:var(--orange-hi)}
+
+/* --- narrow / portrait fallback ------------------------------------------- */
+@media (max-width:1000px), (max-height:620px){
+  body{overflow:auto}
+  .shell{height:auto; min-height:100%}
+  main{grid-template-columns:1fr; grid-template-rows:auto auto}
+  #canvasWrap{height:52vh; min-height:300px; flex:0 0 auto}
+  #panel{overflow:visible}
+  #chartCard{min-height:230px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}
+</style>
+</head>
+<body data-page-node-id="7eCLsgkHtDHmntk9riyyPp">
+
+<div id="app" class="shell" data-page-node-id="93gw5rUQw00ZcgwZIo8vJk">
+  <header data-page-node-id="6ZFkusxf85BbaFPG7KPzU1">
+    <h1 data-page-node-id="HJKa9cF4gPE1fsrZki2EHI">Siapa yang Memulai Rumor?<span class="line2" data-page-node-id="sFSolEbMpnA3rvuW4qIvpx">Betweenness vs Closeness</span></h1>
+    <div class="rule" data-page-node-id="ZcCV3I9YQWMJKdZctMBSUN"></div>
+  </header>
+
+  <main data-page-node-id="IMoTGHN5nVMjMzynMC0IFF">
+    <!-- LEFT: the network -->
+    <section id="stage" data-page-node-id="Rd4LJYHXU83DKlMKKUAdiv">
+      <div id="canvasWrap" data-page-node-id="nzIEOMC6aMMbsF9h1H72L4">
+        <canvas id="net" aria-label="Jaringan pertemanan ego-Facebook dengan warna status rumor" data-page-node-id="kNKqFfsYLZES6aojqyD2pq"></canvas>
+        <div id="demoLabel" hidden data-page-node-id="jtQ9UMxLZH6UImJ3LxjrUP">Mode demo otomatis</div>
+      </div>
+      <ul id="legend" data-page-node-id="hYzh76GgJ0DdgDfeEGcKAt">
+        <li data-page-node-id="ofcDC7B75doRPS15KANiAw"><i class="sw ignorant" data-page-node-id="Gd1x9iCylFvRce7ZMJO1M2"></i>Ignorant (belum tahu)</li>
+        <li data-page-node-id="8o1tL9XCaEg4mrRG5AQnsM"><i class="sw spreader" data-page-node-id="e7G2drYPTE4veG3ljjLkYu"></i>Spreader (menyebarkan)</li>
+        <li data-page-node-id="riHtVI7HZOH5PzebIZqmE0"><i class="sw stifler" data-page-node-id="jomtFbFojuKEzSkcOECq7Z"></i>Stifler (berhenti)</li>
+        <li data-page-node-id="UDF9fFNb3geOFhZMtWfYPT"><i class="sw newb" data-page-node-id="7N5nvTScrvzAC9PeJFVCmK"></i>Baru percaya</li>
+      </ul>
+    </section>
+
+    <!-- RIGHT: controls -->
+    <section id="panel" data-page-node-id="lxK6uuM2YXndChJ98CRfaJ">
+      <div class="card" data-page-node-id="l0FrMZBimDYnZKjDeYEoeJ">
+        <h2 data-page-node-id="GGA8uqPCG743Ak0HiusOBo">Mulai rumor dari siapa?</h2>
+        <div id="stratList" data-page-node-id="SZBT7kKwD89BbotQVWxe7i">
+          <button class="btn strat" data-strategy="bc" aria-pressed="false" data-page-node-id="bbTVxcvdJXmGNx5gtRKMPR">Betweenness (jembatan)</button>
+          <button class="btn strat" data-strategy="cc" aria-pressed="false" data-page-node-id="HfWIZm1yVUY4nN76ZZqggS">Closeness (pusat)</button>
+          <button class="btn strat" data-strategy="random" aria-pressed="false" data-page-node-id="noJfPoBzCFSBNJgqbY7eLl">Acak</button>
+        </div>
+      </div>
+
+      <div class="card" id="chartCard" data-page-node-id="MeXs1YEoddOHtcAuYlNCwO">
+        <h2 data-page-node-id="s4hlB9o1LNc8yHdqdOBVEM">Ukuran rumor w(t) terhadap langkah</h2>
+        <div id="chartWrap" data-page-node-id="0SQF2P12EL8HmD4yhMBEkh"><canvas id="chart" aria-label="Grafik ukuran rumor terhadap langkah" data-page-node-id="HfuxngFgqSSEAytbjwkh80"></canvas></div>
+        <p id="statusLine" data-page-node-id="EzGViEfAKLevFJAcItX8pq">Pilih strategi di atas untuk memulai. Diamkan 30 detik untuk melihat mode demo otomatis.</p>
+        <div id="verdict" hidden data-page-node-id="3jspo1P3cueaPU9jMDVWbd"></div>
+      </div>
+
+      <div class="card" data-page-node-id="pJE1EGgDhK1PmfIF6ICUci">
+        <div class="btnRow" data-page-node-id="L9b3m8xAkexHR0BrxS9jcX">
+          <button id="runBatch" class="btn primary" data-page-node-id="0SPP6cwR3etmubOz5GpC5m">Jalankan 200 percobaan</button>
+          <button id="guessBtn" class="btn" data-page-node-id="7Gya1SUerTm3rOq7oGxuCk">Tebak dulu!</button>
+        </div>
+        <div id="progress" hidden data-page-node-id="GwYSCTWPzCb0cJb0Xk1heB">
+          <div class="bar" data-page-node-id="9nAAKt6QXq1UznWcPjJIJ0"><i id="barFill" data-page-node-id="7swowEVkrpM62gqIXHH8UL"></i></div>
+          <p id="progressText" data-page-node-id="RllPvYCJ7OsyMaoPG1Cfps"></p>
+        </div>
+        <div id="tableWrap" data-page-node-id="Dt0d8fAvuSxhXIUu8aXDXH">
+          <p class="empty" data-page-node-id="6iCX0aiKEJDV9uR0FZg3wf">Belum ada hasil. Tekan &ldquo;Jalankan 200 percobaan&rdquo; atau &ldquo;Tebak dulu!&rdquo;.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer data-page-node-id="511Leom9RdQZAbIFe6iRPe">Data: SNAP ego-Facebook &middot; 4.039 node &middot; 88.234 sisi &middot; &lambda;=0,20 &gamma;=0,05 &eta;=0,10 &delta;=0,50</footer>
+</div>
+
+<!-- Shown only when data.js is missing -->
+<div id="noData" hidden data-page-node-id="LdKUuszYPOrtyRp5aMmSmF">
+  <div class="box" data-page-node-id="66SqBiwRwyte2a7cmnIawv">
+    <h1 data-page-node-id="8OjLZKKJ6gfhWyfvV8dDar">Data tidak ditemukan</h1>
+    <div class="rule" data-page-node-id="MbEPbfDJ7nLew0NhlixVOH"></div>
+    <p data-page-node-id="OfR4YnCA4FcBjPo1XglUfN">File <code data-page-node-id="zWyK34Z2gEpAgxiCseOC9l">data.js</code> tidak ditemukan. Letakkan file <code data-page-node-id="CJP1FRWiHGNcX6nZvGTO5T">data.js</code> di folder yang sama dengan <code data-page-node-id="pneOP2chVwneAlPtECkkNB">index.html</code>, lalu muat ulang halaman ini.</p>
+  </div>
+</div>
+
+<!-- Guess overlay -->
+<div id="guessOverlay" hidden role="dialog" aria-modal="true" aria-labelledby="guessQ" data-page-node-id="A913oQvU6rL4QTjzSsOtup">
+  <div class="overlayBox" data-page-node-id="XCLQPC9sMo78zSvvsR1GAz">
+    <div id="guessAsk" data-page-node-id="r1Qvmd8Hgjw1KsGrQhiqVd">
+      <h2 id="guessQ" data-page-node-id="HGbwHAoCvh7ks3ntxXTGfh">Menurut kamu, mana yang lebih ampuh memicu ledakan rumor?</h2>
+      <div class="guessBtns" data-page-node-id="Qq0ndX2wyYP5eGzgeMDs2g">
+        <button class="btn big" data-guess="bc" data-page-node-id="83xbxxqZWJN5pFMVcn4WTF">Betweenness (jembatan)</button>
+        <button class="btn big" data-guess="cc" data-page-node-id="xWOEoz1P7cTbNNYDuiRP0x">Closeness (pusat)</button>
+      </div>
+    </div>
+    <div id="guessWait" hidden data-page-node-id="YIHLcJEIktf3AQwYLf81Fx">
+      <h2 data-page-node-id="PgujhKFi5XGsrGKUPqCfYj">Menjalankan percobaan&hellip;</h2>
+      <p id="guessProg" data-page-node-id="SsgiIAGU5KTRpOOjMucKq0">0 dari 600 percobaan</p>
+    </div>
+    <div id="guessDone" hidden data-page-node-id="iGYQax7yypDMrjBxraaIxk">
+      <p id="guessVerdict" data-page-node-id="nOCnSdGkqFzCPMXjBQHOeq"></p>
+      <p id="guessDetail" data-page-node-id="CBAtahGe1p2jwO8vv6LMCj"></p>
+      <button id="guessClose" class="btn primary" data-page-node-id="EXb5FD5BZ0d7s4koQDcRZD">Tutup dan lihat tabel</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* =======================================================================
+     Model parameters - must match the research model exactly.
+     ======================================================================= */
+  var LAMBDA = 0.20;    // ignorant -> spreader
+  var GAMMA  = 0.05;    // spreader disagreement (per spreader neighbour)
+  var ETA    = 0.10;    // spreader disillusionment (per stifler neighbour)
+  var DELTA  = 0.50;    // spontaneous forgetting
+  var MAX_STEPS = 300;
+  var ESCAPE = 0.05;    // w* >= 5% counts as an explosion
+  var TRIALS = 200;     // simulations per strategy in a batch
+  var CHUNK = 10;       // sims per chunk before yielding to the UI
+  var STEP_MS = 300;    // animation speed
+  var IDLE_MS = 30000;  // attract-mode delay
+  var DEMO_PAUSE = 4000;
+
+  var STATES = { IGNORANT: 0, SPREADER: 1, STIFLER: 2 };
+  var TAU = Math.PI * 2;
+
+  var LABEL = {
+    bc: 'Betweenness (jembatan)',
+    cc: 'Closeness (pusat)',
+    random: 'Acak'
+  };
+  var SHORT = { bc: 'Betweenness', cc: 'Closeness', random: 'Acak' };
+  var ORDER = ['bc', 'cc', 'random'];
+
+  /* =======================================================================
+     Missing-data guard
+     ======================================================================= */
+  function showNoData() {
+    document.getElementById('app').hidden = true;
+    document.getElementById('noData').hidden = false;
+  }
+
+  var D = window.GRAPH_DATA;
+  if (!D || !D.edges || !D.xy || !D.n || !D.top_bc || !D.top_cc) {
+    showNoData();
+    return;
+  }
+  var N = D.n;
+  if (D.xy.length < N * 2 || D.edges.length < 2) { showNoData(); return; }
+
+  /* =======================================================================
+     CSR adjacency built from the flat edge array
+     ======================================================================= */
+  var E = D.edges;
+  var off = new Int32Array(N + 1);
+  var i, e;
+  for (i = 0; i < E.length; i += 2) { off[E[i]]++; off[E[i + 1]]++; }
+  var acc = 0;
+  for (i = 0; i < N; i++) { var d = off[i]; off[i] = acc; acc += d; }
+  off[N] = acc;
+  var M = acc;
+  var nb = new Int32Array(M);
+  var cursor = off.slice(0, N);
+  for (i = 0; i < E.length; i += 2) {
+    var u = E[i], v = E[i + 1];
+    nb[cursor[u]++] = v;
+    nb[cursor[v]++] = u;
+  }
+  cursor = null;
+
+  // Node degree straight from the CSR offsets.
+  var deg = new Int32Array(N);
+  var maxDeg = 0;
+  for (i = 0; i < N; i++) {
+    var dd = off[i + 1] - off[i];
+    deg[i] = dd;
+    if (dd > maxDeg) maxDeg = dd;
+  }
+
+  // Layout bounds (aspect ratio is preserved, longer axis spans 0..1000).
+  var LW = 1, LH = 1;
+  for (i = 0; i < N; i++) {
+    if (D.xy[2 * i] > LW) LW = D.xy[2 * i];
+    if (D.xy[2 * i + 1] > LH) LH = D.xy[2 * i + 1];
+  }
+  LW += 1; LH += 1;
+
+  /* =======================================================================
+     Simulation - one stepper shared by the animation and the batch trials
+     ======================================================================= */
+  var spBuf = new Int32Array(N);
+  var ignBuf = new Int32Array(maxDeg + 1);
+
+  function createSim(seed) {
+    var state = new Uint8Array(N);
+    if (seed >= 0) state[seed] = STATES.SPREADER;
+    return {
+      state: state,
+      seed: seed,
+      t: 0,
+      w: [(seed >= 0 ? 1 : 0) / N],
+      done: false,
+      newBelievers: []
+    };
+  }
+
+  // Advance exactly one time step. States update immediately, so a spreader
+  // visited later in the same step sees the changes made earlier in the step.
+  function stepSim(sim) {
+    if (sim.done) return;
+
+    var st = sim.state;
+    var n = 0;
+    for (i = 0; i < N; i++) if (st[i] === STATES.SPREADER) spBuf[n++] = i;
+    if (n === 0) { sim.done = true; return; }
+
+    // Visit the spreaders in random order.
+    for (i = n - 1; i > 0; i--) {
+      var j = (Math.random() * (i + 1)) | 0;
+      var tmp = spBuf[i]; spBuf[i] = spBuf[j]; spBuf[j] = tmp;
+    }
+
+    var believers = sim.newBelievers;
+    believers.length = 0;
+    var survived = 0;
+
+    for (var k = 0; k < n; k++) {
+      var s = spBuf[k];
+      var a = off[s], b = off[s + 1];
+      var kS = 0, kR = 0, nIgn = 0;
+
+      // Single scan of the neighbours: record the ignorant list plus the
+      // spreader / stifler counts as they are at the moment of the visit.
+      for (e = a; e < b; e++) {
+        var w = nb[e], sw = st[w];
+        if (sw === STATES.IGNORANT) ignBuf[nIgn++] = w;
+        else if (sw === STATES.SPREADER) kS++;
+        else if (sw === STATES.STIFLER) kR++;
+      }
+
+      // Ignorant neighbours either believe the rumour or stop listening.
+      for (i = 0; i < nIgn; i++) {
+        var g = ignBuf[i];
+        if (Math.random() < LAMBDA) {
+          st[g] = STATES.SPREADER;
+          believers.push(g);
+        } else {
+          st[g] = STATES.STIFLER;
+        }
+      }
+
+      // Does this spreader stop spreading? Each route is drawn independently.
+      var stops = false;
+      if (kS > 0 && Math.random() < 1 - Math.pow(1 - GAMMA, kS)) stops = true;
+      if (!stops && kR > 0 && Math.random() < 1 - Math.pow(1 - ETA, kR)) stops = true;
+      if (!stops && Math.random() < DELTA) stops = true;
+      if (stops) st[s] = STATES.STIFLER;
+
+      if (!stops) survived++;
+    }
+
+    sim.t++;
+    var touched = 0;
+    for (i = 0; i < N; i++) if (st[i] !== STATES.IGNORANT) touched++;
+    sim.w.push(touched / N);
+
+    if (survived + believers.length === 0 || sim.t >= MAX_STEPS) sim.done = true;
+  }
+
+  function runToEnd(seed) {
+    var sim = createSim(seed);
+    while (!sim.done) stepSim(sim);
+    return sim;
+  }
+
+  function pickSeed(strategy) {
+    if (strategy === 'bc') return D.top_bc[(Math.random() * D.top_bc.length) | 0];
+    if (strategy === 'cc') return D.top_cc[(Math.random() * D.top_cc.length) | 0];
+    return (Math.random() * N) | 0;
+  }
+
+  function statsOf(arr) {
+    var n = arr.length, sum = 0, m, k;
+    for (k = 0; k < n; k++) sum += arr[k];
+    m = sum / n;
+    var ss = 0;
+    for (k = 0; k < n; k++) ss += (arr[k] - m) * (arr[k] - m);
+    var sd = n > 1 ? Math.sqrt(ss / (n - 1)) : 0;
+    var esc = 0;
+    for (k = 0; k < n; k++) if (arr[k] >= ESCAPE) esc++;
+    return { n: n, mean: m, sd: sd, esc: esc / n };
+  }
+
+  /* =======================================================================
+     Indonesian number formatting (comma decimal separator)
+     ======================================================================= */
+  function nf(v, d) { return v.toFixed(d).replace('.', ','); }
+  function pct1(v) { return nf(v * 100, 1) + '%'; }
+  function nf2(v) { return nf(v, 2); }
+  function nf3(v) { return nf(v, 3); }
+
+  /* =======================================================================
+     DOM handles
+     ======================================================================= */
+  var elNet = document.getElementById('net');
+  var elChart = document.getElementById('chart');
+  var elWrap = document.getElementById('canvasWrap');
+  var elChartWrap = document.getElementById('chartWrap');
+  var elStatus = document.getElementById('statusLine');
+  var elVerdict = document.getElementById('verdict');
+  var elTableWrap = document.getElementById('tableWrap');
+  var elProgress = document.getElementById('progress');
+  var elBarFill = document.getElementById('barFill');
+  var elProgressText = document.getElementById('progressText');
+  var elDemoLabel = document.getElementById('demoLabel');
+  var elOverlay = document.getElementById('guessOverlay');
+  var elGuessAsk = document.getElementById('guessAsk');
+  var elGuessWait = document.getElementById('guessWait');
+  var elGuessDone = document.getElementById('guessDone');
+  var elGuessProg = document.getElementById('guessProg');
+  var elGuessVerdict = document.getElementById('guessVerdict');
+  var elGuessDetail = document.getElementById('guessDetail');
+  var elGuessClose = document.getElementById('guessClose');
+  var elGuessBtn = document.getElementById('guessBtn');
+  var elRunBatch = document.getElementById('runBatch');
+  var stratBtns = Array.prototype.slice.call(document.querySelectorAll('.btn.strat'));
+
+  /* =======================================================================
+     Canvas plumbing
+     ======================================================================= */
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var netCtx = elNet.getContext('2d');
+  var chartCtx = elChart.getContext('2d');
+  var netW = 0, netH = 0, chartW = 0, chartH = 0;
+  var px = new Float32Array(N), py = new Float32Array(N);
+  var edgeLayer = null;
+  var nodeR = 2;
+  var b0 = new Int32Array(N), b1 = new Int32Array(N), b2 = new Int32Array(N);
+
+  function sizeCanvas(cv, ctx, w, h) {
+    cv.width = Math.max(1, Math.round(w * DPR));
+    cv.height = Math.max(1, Math.round(h * DPR));
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+
+  function projectNodes() {
+    var s = Math.min(netW / LW, netH / LH);
+    var ox = (netW - LW * s) / 2, oy = (netH - LH * s) / 2;
+    for (var k = 0; k < N; k++) {
+      px[k] = ox + D.xy[2 * k] * s;
+      py[k] = oy + D.xy[2 * k + 1] * s;
+    }
+    nodeR = Math.max(1.1, Math.min(3.0, Math.min(netW, netH) / 380));
+  }
+
+  // All 88,234 edges are stroked once into an offscreen canvas and reused.
+  function buildEdgeLayer() {
+    var cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(netW * DPR));
+    cv.height = Math.max(1, Math.round(netH * DPR));
+    var c = cv.getContext('2d');
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    var p = new Path2D();
+    for (var k = 0; k < E.length; k += 2) {
+      var a = E[k], b = E[k + 1];
+      p.moveTo(px[a], py[a]);
+      p.lineTo(px[b], py[b]);
+    }
+    c.strokeStyle = 'rgba(62,143,137,0.15)';
+    c.lineWidth = 0.5;
+    c.stroke(p);
+    edgeLayer = cv;
+  }
+
+  function renderNet() {
+    var ctx = netCtx;
+    ctx.clearRect(0, 0, netW, netH);
+    if (edgeLayer) ctx.drawImage(edgeLayer, 0, 0, netW, netH);
+
+    var st = sim.state;
+    var c0 = 0, c1 = 0, c2 = 0, k, s;
+    for (k = 0; k < N; k++) {
+      s = st[k];
+      if (s === STATES.IGNORANT) b0[c0++] = k;
+      else if (s === STATES.SPREADER) b1[c1++] = k;
+      else b2[c2++] = k;
+    }
+
+    var size = Math.max(2, Math.round(nodeR * 2));
+    var half = size / 2;
+
+    ctx.fillStyle = 'rgba(62,143,137,0.40)';
+    ctx.beginPath();
+    for (k = 0; k < c0; k++) {
+      var a0 = b0[k];
+      ctx.rect(Math.round(px[a0] - half), Math.round(py[a0] - half), size, size);
+    }
+    ctx.fill();
+
+    ctx.fillStyle = '#3E8F89';
+    ctx.beginPath();
+    for (k = 0; k < c2; k++) {
+      var a2 = b2[k];
+      ctx.rect(Math.round(px[a2] - half), Math.round(py[a2] - half), size, size);
+    }
+    ctx.fill();
+
+    ctx.fillStyle = '#E07B39';
+    ctx.beginPath();
+    for (k = 0; k < c1; k++) {
+      var a1 = b1[k];
+      ctx.rect(Math.round(px[a1] - half), Math.round(py[a1] - half), size, size);
+    }
+    ctx.fill();
+
+    // Pale halo on everyone who heard the rumour this step.
+    var bel = sim.newBelievers;
+    if (bel.length) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      for (k = 0; k < bel.length; k++) {
+        var bi = bel[k], r = nodeR * 2.2;
+        ctx.moveTo(px[bi] + r, py[bi]);
+        ctx.arc(px[bi], py[bi], r, 0, TAU);
+      }
+      ctx.stroke();
+    }
+
+    // The seed keeps a ring so visitors can follow where it started.
+    if (sim.seed >= 0) {
+      ctx.strokeStyle = '#F0904F';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px[sim.seed], py[sim.seed], Math.max(5, nodeR * 3.4), 0, TAU);
+      ctx.stroke();
+    }
+  }
+
+  /* =======================================================================
+     w(t) chart
+     ======================================================================= */
+  var AXIS_FONT = '13px ' + '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+
+  function renderChart() {
+    var ctx = chartCtx, w = chartW, h = chartH;
+    ctx.clearRect(0, 0, w, h);
+    if (w < 40 || h < 40) return;
+
+    var L = 50, R = 10, T = 12, B = 30;
+    var pw = w - L - R, ph = h - T - B;
+    if (pw < 20 || ph < 20) return;
+
+    var series = sim.w;
+    var peak = 0, k;
+    for (k = 0; k < series.length; k++) if (series[k] > peak) peak = series[k];
+
+    var yMax = Math.max(0.10, Math.min(1, Math.ceil(peak * 1.15 / 0.05) * 0.05));
+    var xMax = Math.max(30, Math.ceil(sim.t / 5) * 5);
+    var yOf = function (v) { return T + ph - (v / yMax) * ph; };
+    var xOf = function (t) { return L + (t / xMax) * pw; };
+
+    // Horizontal grid + y labels
+    ctx.font = AXIS_FONT;
+    ctx.strokeStyle = 'rgba(62,143,137,0.22)';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#8CA8B5';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (k = 0; k <= 2; k++) {
+      var val = yMax * k / 2, y = yOf(val);
+      ctx.beginPath();
+      ctx.moveTo(L, y);
+      ctx.lineTo(L + pw, y);
+      ctx.stroke();
+      ctx.fillText(nf2(val), L - 8, y);
+    }
+
+    // x ticks
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (k = 0; k <= 4; k++) {
+      var tv = Math.round(xMax * k / 4);
+      ctx.fillText(String(tv), xOf(tv), T + ph + 5);
+    }
+
+    // 5% escape threshold
+    var yTh = yOf(ESCAPE);
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#E07B39';
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(L, yTh);
+    ctx.lineTo(L + pw, yTh);
+    ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle = '#E07B39';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('ambang ledakan 5%', L + 5, yTh - 2);
+
+    // the curve
+    ctx.strokeStyle = '#F0904F';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (k = 0; k < series.length; k++) {
+      var cxp = xOf(k), cyp = yOf(series[k]);
+      if (k === 0) ctx.moveTo(cxp, cyp); else ctx.lineTo(cxp, cyp);
+    }
+    ctx.stroke();
+
+    // head marker so a single point at t = 0 is still visible
+    var lastX = xOf(series.length - 1), lastY = yOf(series[series.length - 1]);
+    ctx.fillStyle = '#E07B39';
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 3.2, 0, TAU);
+    ctx.fill();
+
+    // axis titles
+    ctx.fillStyle = '#8CA8B5';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('langkah (t)', L + pw, h - 2);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('w(t)', 4, T - 2);
+  }
+
+  /* =======================================================================
+     Current simulation + rendering loop
+     ======================================================================= */
+  var sim = createSim(-1);
+  sim.done = true;
+
+  var rafPending = false;
+  function scheduleRender() {
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(function () {
+      rafPending = false;
+      renderNet();
+      renderChart();
+    });
+  }
+
+  var reducedMotion = window.matchMedia
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false;
+
+  /* =======================================================================
+     Status line + verdict
+     ======================================================================= */
+  function updateStatus(final) {
+    if (sim.seed < 0) return;               // nothing has been seeded yet
+    var w = sim.w[sim.w.length - 1];
+    elStatus.textContent = 'Langkah ' + sim.t + ' \u00b7 menjangkau ' + pct1(w) +
+      ' \u00b7 seed #' + sim.seed + ' (derajat ' + deg[sim.seed] + ')';
+    if (final) {
+      var escaped = w >= ESCAPE;
+      elVerdict.textContent = escaped ? 'MELEDAK' : 'MATI DINI';
+      elVerdict.className = escaped ? 'meledak' : 'dini';
+      elVerdict.hidden = false;
+    } else {
+      elVerdict.hidden = true;
+    }
+  }
+
+  function setActiveStrategy(strategy) {
+    for (var k = 0; k < stratBtns.length; k++) {
+      stratBtns[k].setAttribute('aria-pressed', stratBtns[k].dataset.strategy === strategy ? 'true' : 'false');
+    }
+  }
+
+  /* =======================================================================
+     Animated run
+     ======================================================================= */
+  var runToken = 0;
+  var runTimer = null;
+  var batchToken = 0;   // bumped whenever a new run or batch takes over
+
+  function cancelRun() {
+    runToken++;
+    batchToken++;       // a fresh run also cancels any batch in flight
+    if (runTimer !== null) { clearInterval(runTimer); runTimer = null; }
+    elProgress.hidden = true;
+  }
+
+  function startRun(strategy) {
+    cancelRun();
+    var token = runToken;
+
+    sim = createSim(pickSeed(strategy));
+    setActiveStrategy(strategy);
+    elVerdict.hidden = true;
+    updateStatus(false);
+    scheduleRender();
+
+    return new Promise(function (resolve) {
+      function finish() {
+        updateStatus(true);
+        scheduleRender();
+        resolve();
+      }
+
+      if (reducedMotion) {           // no animation: jump straight to the end
+        while (!sim.done) stepSim(sim);
+        finish();
+        return;
+      }
+
+      runTimer = setInterval(function () {
+        if (token !== runToken) { clearInterval(runTimer); runTimer = null; return; }
+        if (sim.done) {
+          clearInterval(runTimer); runTimer = null;
+          finish();
+          return;
+        }
+        stepSim(sim);
+        updateStatus(sim.done);
+        scheduleRender();
+        if (sim.done) {
+          clearInterval(runTimer); runTimer = null;
+          resolve();
+        }
+      }, STEP_MS);
+    });
+  }
+
+  /* =======================================================================
+     Batch trials - chunked so the UI never freezes
+     ======================================================================= */
+  function runBatch(opts) {
+    opts = opts || {};
+    var extraAbort = opts.abort;
+    var onProgress = opts.onProgress || function () {};
+    var myToken = ++batchToken;
+
+    var finals = { bc: [], cc: [], random: [] };
+    var total = ORDER.length * TRIALS;
+    var done = 0;
+    var si = 0;
+
+    function aborted() {
+      return myToken !== batchToken || (extraAbort ? extraAbort() : false);
+    }
+
+    return new Promise(function (resolve) {
+      function finish(res) {
+        if (myToken === batchToken) elProgress.hidden = true;
+        if (res) renderTable(res);
+        resolve(res);
+      }
+      function chunk() {
+        if (aborted()) { finish(null); return; }
+        for (var k = 0; k < CHUNK && si < ORDER.length; k++) {
+          var st = ORDER[si];
+          var out = runToEnd(pickSeed(st));
+          finals[st].push(out.w[out.w.length - 1]);
+          done++;
+          if (finals[st].length >= TRIALS) si++;
+        }
+        onProgress(done, total);
+        if (si >= ORDER.length) {
+          finish({ bc: statsOf(finals.bc), cc: statsOf(finals.cc), random: statsOf(finals.random) });
+          return;
+        }
+        setTimeout(chunk, 0);
+      }
+      chunk();
+    });
+  }
+
+  function renderTable(res) {
+    var best = ORDER.reduce(function (a, b) { return res[b].mean > res[a].mean ? b : a; }, ORDER[0]);
+    var html = '<table class="res"><thead><tr>' +
+      '<th>Strategi</th><th>Escape (\u22655%)</th>' +
+      '<th>Rata-rata ukuran akhir</th><th>Simpangan baku</th>' +
+      '</tr></thead><tbody>';
+    for (var k = 0; k < ORDER.length; k++) {
+      var key = ORDER[k], s = res[key];
+      html += '<tr class="' + (key === best ? 'best' : '') + '">' +
+        '<td class="strat">' + LABEL[key] + '</td>' +
+        '<td class="esc"><span class="num">' + pct1(s.esc) + '</span>' +
+        '<span class="bar"><i style="width:' + (s.esc * 100).toFixed(1) + '%"></i></span></td>' +
+        '<td><span class="num">' + nf3(s.mean) + '</span></td>' +
+        '<td><span class="num">' + nf3(s.sd) + '</span></td>' +
+        '</tr>';
+    }
+    html += '</tbody></table>';
+    elTableWrap.innerHTML = html;
+    return best;
+  }
+
+  function setProgress(done, total) {
+    elProgress.hidden = false;
+    elBarFill.style.width = (done / total * 100).toFixed(1) + '%';
+    elProgressText.textContent = 'Menjalankan percobaan\u2026 ' + done + ' dari ' + total +
+      ' (' + Math.round(done / total * 100) + '%)';
+  }
+
+  elRunBatch.addEventListener('click', function () {
+    cancelRun();
+    elVerdict.hidden = true;
+    setProgress(0, ORDER.length * TRIALS);
+    runBatch({ onProgress: setProgress });
+  });
+
+  /* =======================================================================
+     Guess mode
+     ======================================================================= */
+  var guessChoice = null;
+
+  function openGuess() {
+    guessChoice = null;
+    elGuessAsk.hidden = false;
+    elGuessWait.hidden = true;
+    elGuessDone.hidden = true;
+    elOverlay.hidden = false;
+    var first = elOverlay.querySelector('[data-guess]');
+    if (first) first.focus();
+  }
+
+  function closeGuess() {
+    elOverlay.hidden = true;
+    elGuessBtn.focus();
+  }
+
+  elGuessBtn.addEventListener('click', openGuess);
+  elGuessClose.addEventListener('click', closeGuess);
+
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && !elOverlay.hidden) closeGuess();
+  });
+
+  Array.prototype.forEach.call(elOverlay.querySelectorAll('[data-guess]'), function (btn) {
+    btn.addEventListener('click', function () {
+      if (guessChoice) return;
+      guessChoice = btn.dataset.guess;
+      elGuessAsk.hidden = true;
+      elGuessWait.hidden = false;
+      elGuessProg.textContent = '0 dari ' + (ORDER.length * TRIALS) + ' percobaan';
+      cancelRun();
+      elVerdict.hidden = true;
+
+      runBatch({
+        onProgress: function (done, total) {
+          setProgress(done, total);
+          elGuessProg.textContent = done + ' dari ' + total + ' percobaan';
+        }
+      }).then(function (res) {
+        if (!res) { closeGuess(); return; }
+
+        // The verdict is computed from the mean final size, never hardcoded.
+        var best = ORDER.reduce(function (a, b) { return res[b].mean > res[a].mean ? b : a; }, ORDER[0]);
+        var right = guessChoice === best;
+        elGuessVerdict.textContent = right
+          ? 'Tebakanmu benar!'
+          : 'Kejutan! ' + SHORT[best] + ' justru menang.';
+        elGuessDetail.textContent =
+          'Rata-rata ukuran akhir: ' + SHORT.cc + ' ' + nf3(res.cc.mean) +
+          ' vs ' + SHORT.bc + ' ' + nf3(res.bc.mean) +
+          '. Escape (rumor \u22655%): ' + pct1(res.cc.esc) + ' vs ' + pct1(res.bc.esc) + '.';
+        elGuessWait.hidden = true;
+        elGuessDone.hidden = false;
+        elGuessClose.focus();
+      });
+    });
+  });
+
+  /* =======================================================================
+     Idle attract mode
+     ======================================================================= */
+  var idleTimer = null;
+  var autoOn = false;
+  var autoToken = 0;
+
+  function wait(ms) {
+    return new Promise(function (r) { setTimeout(r, ms); });
+  }
+
+  function stopAutoplay() {
+    if (!autoOn) return;
+    autoOn = false;
+    autoToken++;
+    elDemoLabel.hidden = true;
+    cancelRun();
+  }
+
+  function startAutoplay() {
+    if (reducedMotion || autoOn) return;
+    if (!elOverlay.hidden) closeGuess();   // never leave the booth stuck on a dialog
+    autoOn = true;
+    var token = ++autoToken;
+    elDemoLabel.hidden = false;
+
+    function alive() { return autoOn && token === autoToken; }
+
+    (function loop() {
+      if (!alive()) return;
+      var step = 0;
+      function next() {
+        if (!alive()) return;
+        if (step < ORDER.length) {
+          var strategy = ORDER[step++];
+          startRun(strategy).then(function () {
+            if (!alive()) return;
+            wait(DEMO_PAUSE).then(next);
+          });
+          return;
+        }
+        // After each full cycle of three, run the 200-trial comparison.
+        setProgress(0, ORDER.length * TRIALS);
+        runBatch({
+          abort: function () { return !alive(); },
+          onProgress: function (done, total) { if (alive()) setProgress(done, total); }
+        }).then(function (res) {
+          if (!alive()) return;
+          wait(DEMO_PAUSE).then(function () { step = 0; next(); });
+        });
+      }
+      next();
+    })();
+  }
+
+  function userActivity() {
+    if (autoOn) stopAutoplay();
+    if (idleTimer !== null) clearTimeout(idleTimer);
+    idleTimer = setTimeout(startAutoplay, IDLE_MS);
+  }
+
+  ['pointerdown', 'pointermove', 'keydown', 'wheel'].forEach(function (evt) {
+    window.addEventListener(evt, userActivity, { passive: true });
+  });
+
+  /* =======================================================================
+     Strategy buttons
+     ======================================================================= */
+  stratBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      startRun(btn.dataset.strategy);
+    });
+  });
+
+  /* =======================================================================
+     Resize
+     ======================================================================= */
+  var resizePending = false;
+  function onResize() {
+    if (resizePending) return;
+    resizePending = true;
+    requestAnimationFrame(function () {
+      resizePending = false;
+      layoutAll();
+    });
+  }
+
+  function layoutAll() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+    netW = elWrap.clientWidth;
+    netH = elWrap.clientHeight;
+    if (netW > 0 && netH > 0) {
+      sizeCanvas(elNet, netCtx, netW, netH);
+      projectNodes();
+      buildEdgeLayer();
+    }
+
+    chartW = elChartWrap.clientWidth;
+    chartH = elChartWrap.clientHeight;
+    if (chartW > 0 && chartH > 0) sizeCanvas(elChart, chartCtx, chartW, chartH);
+
+    renderNet();
+    renderChart();
+  }
+
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(onResize);
+    ro.observe(elWrap);
+    ro.observe(elChartWrap);
+  }
+  window.addEventListener('resize', onResize);
+
+  /* =======================================================================
+     Boot
+     ======================================================================= */
+  layoutAll();
+  updateStatus(false);
+  userActivity();
+})();
+</script>
+</body>
+</html>
